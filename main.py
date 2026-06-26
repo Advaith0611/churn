@@ -259,18 +259,13 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# ═══════════════════════════════════════════════════════════════════════════════
-#  TABS
-# ═══════════════════════════════════════════════════════════════════════════════
 tab_bulk, tab_single, tab_model = st.tabs([
     "  📂  Bulk Scoring  ",
     "  🔍  Single Customer  ",
     "  📊  Model Report  "
 ])
 
-# ─────────────────────────────────────────────────────────────────────────────
-#  TAB 1: BULK CSV UPLOAD
-# ─────────────────────────────────────────────────────────────────────────────
+#csv file
 with tab_bulk:
     st.markdown('<div class="callout">Upload a CSV exported from your CRM — no Churn column needed. '
                 'The model will score every customer and return a prioritised retention list.</div>',
@@ -306,8 +301,16 @@ with tab_bulk:
             df_score['TotalCharges'] = pd.to_numeric(df_score['TotalCharges'], errors='coerce')
             df_score['TotalCharges'].fillna(df_score['TotalCharges'].median(), inplace=True)
             le_score = LabelEncoder()
-            for col in df_score.select_dtypes(include='object').columns:
-                df_score[col] = le_score.fit_transform(df_score[col].astype(str))
+            for col in df_score.select_dtypes(include="object").columns:
+                if col in label_maps:
+                    mapping = label_maps[col]
+                    df_score[col] = (
+                        df_score[col]
+                        .astype(str)
+                        .map(mapping)
+                        .fillna(0)
+                        .astype(int)
+                    )
 
             # Score
             probs = model.predict_proba(df_score[feature_cols])[:, 1]
@@ -360,11 +363,11 @@ with tab_bulk:
             f_col1, f_col2 = st.columns(2)
             with f_col1:
                 tier_filter = st.multiselect(
-                    "Risk tier",
-                    options=['High', 'Medium', 'Low'],
-                    default=['High', 'Medium'],
-                    label_visibility="collapsed"
-                )
+                            "Risk tier",
+                            options=["High", "Medium", "Low"],
+                            default=["High", "Medium", "Low"]
+                        )
+
             with f_col2:
                 prob_min = st.slider("Min churn probability %", 0, 100, 30, label_visibility="collapsed")
 
@@ -442,9 +445,7 @@ with tab_bulk:
         </div>
         """, unsafe_allow_html=True)
 
-# ─────────────────────────────────────────────────────────────────────────────
-#  TAB 2: SINGLE CUSTOMER
-# ─────────────────────────────────────────────────────────────────────────────
+#single customer form
 with tab_single:
     st.markdown('<div class="callout">Use this when you\'re on a call with a customer and need '
                 'a quick churn risk score before deciding whether to offer a retention deal.</div>',
@@ -557,10 +558,7 @@ with tab_single:
                 </div>
             </div>
             """, unsafe_allow_html=True)
-
-# ─────────────────────────────────────────────────────────────────────────────
-#  TAB 3: MODEL REPORT
-# ─────────────────────────────────────────────────────────────────────────────
+# model report
 with tab_model:
     col_cm, col_fi = st.columns(2)
 
